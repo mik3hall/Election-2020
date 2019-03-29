@@ -1,0 +1,236 @@
+---
+title: "Popular Vote vs. Electoral College"
+author: "Mike Hall"
+date: "3/20/2019"
+output: 
+  html_document:
+    keep_md: true
+---
+
+##Popular Vote vs. Electoral College
+
+[Elizabeth Warren](https://en.wikipedia.org/wiki/Elizabeth_Warren) is a presidential candidate of the Democrat party. One of the issues that she is running on is the elimination of the electoral college in favor of popular vote for presidential elections. It is an interesting idea. Hilary Clinton lost the last presidential election in the electoral college despite a popular vote majority. Al Gore lost the 2000 presidential election also with a popular vote majority. Actually, he lost the election by a Supreme Court decision mostly made by Ronald Reagan appointed justices. 
+
+On the face of it nothing could really be fairer than popular vote. With a two party system it should be one person one vote, right? Especially as far as the Democrats are concerned since they won the popular vote in 4 of the last 5 elections while only putting one president into office. 
+
+[Why the Electoral college](https://www.historycentral.com/elections/Electoralcollgewhy.html) anyhow? The issue of eliminating the electoral college was recently discussed on the [MSNBC Hardball program](https://www.msnbc.com/hardball). One guest repeated that the electoral college was set up to protect small states. While my thoughts had been that this might effectively be what it was accomplishing, my memory was that this was not the reason it was created. I recalled that it was enacted to facilitate elections when vote tallies weren't as easy to put together as they are in more modern times. I was recalling incorrectly, the Hardball guest was correct, as shown in the above (Why the Electoral college) link. 
+
+Another reason for establishing the Electoral College given in the above linked article was...
+
+> <chunk style="font-size:15px">The founding fathers were afraid of direct election to the Presidency. They feared a tyrant could manipulate public opinion and come to power.</chunk>
+
+This seems to have somewhat backfired in the last presidential election.
+
+The basis of my contention that switching to popular vote is not a good idea, is that the current two party system considerably aligns along population lines. You hear this frequently, and I have myself mentioned it previously here and there. The Democrats tend to win in cities and large urban areas while republicans control larger space in more sparsley populated areas. The Democrats have what amounts to an edge in strictly popular vote elections.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r constants, echo=FALSE} 
+NUM_ITERS <- 10000
+SD_PAD <- 0
+```
+
+```{r init, echo=FALSE}
+d00 <- read.csv("election00.csv")
+d <- read.csv("electoral.csv")
+dout <- merge(d,d00)
+results <- dout[,c(1:3,13,12,4:11)]
+```
+Let's see if anything seems to corroborate that population is reflected in presidential elections. First, consider the number of states that the Democrats won in presidential elections since 2000. 
+```{r statesnum, echo=FALSE}
+print(paste0("2000 Gore vs. Bush ",sum(results$dem00 > results$rep00)))
+print(paste0("2004 Kerry vs. Bush ",sum(results$dem04 > results$rep04)))
+print(paste0("2008 Obama vs. McCain ",sum(results$dem08 > results$rep08)))
+print(paste0("2012 Obama vs. Romney ",sum(results$dem12 > results$rep12)))
+print(paste0("2016 Clinton vs. Trump ",sum(results$dem16 > results$rep16)))
+```
+Notice that while Gore and Clinton received more popular votes they still won fewer states. I think this is an indicator that the states they won were more populous. The Obama elections were different, as a Democrat he still won more states than his opponents. I consider this a good exception for him and not a refutation of the Democrat's states being more populous. 
+
+What if we just total up the wins across all five elections?
+```{r totwins, echo=FALSE}
+dwins00num <- sum(results$dem00 > results$rep00)
+rwins00num <- 51-dwins00num
+dwins04num <- sum(results$dem04 > results$rep04)
+rwins04num <- 51 - dwins04num
+dwins08num <- sum(results$dem08 > results$rep08)
+rwins08num <- 51 - dwins08num
+dwins12num <- sum(results$dem12 > results$rep12)
+rwins12num <- 51 - dwins12num
+dwins16num <- sum(results$dem16 > results$rep16)
+rwins16num <- 51 - dwins16num
+dwinsnum <- dwins00num + dwins04num + dwins08num + dwins12num + dwins16num
+print("For all five elections...")
+print(paste0("Dem wins ",dwinsnum))
+rwinsnum <- rwins00num + rwins04num + rwins08num + rwins12num + rwins16num
+print(paste0("Rep wins ",rwinsnum))
+```
+Here we see that despite the Obama wins the Republicans have still won more states during the last five elections. 
+
+```{r partyWins, echo=FALSE}
+d00wins <- results[which(results$dem00 > results$rep00),c("State","pop2010","dem00","rep00")]
+r00wins <- results[which(results$rep00 > results$dem00),c("State","pop2010","dem00","rep00")]
+```
+Actually, my data includes the 2010 census populations for each state. So, to nail down what are the average populations of the states won by Democrats across the elections versus the Republican average populations.
+```{r avgPop, echo=FALSE}
+print(paste0("Average population of states the Democrats won ",round(mean(d00wins$pop2010)),0))
+print(paste0("Average population of states the Republicans won ",round(mean(r00wins$pop2010)),0))
+```
+So the state populations for Democrat victories are definitely higher. 
+
+Now, consider the average margin of victory for the candidates in the 2000 election.
+```{r margins, echo=FALSE}
+print(paste0("Avg Democrat margin of victory ",round(sum(d00wins$dem00-d00wins$rep00)/nrow(d00wins)),0))
+print(paste0("Avg Republican margin of victory ",round(sum(r00wins$rep00-r00wins$dem00)/nrow(r00wins)),0))
+```
+Margin of victory is about 50% higher for the Democrats. Even more pronounced than population differences.
+
+The simulations that are coming up need the standard deviation of the vote totals for each state. Sort of a measure of the spread of the votes. Bigger states should have a bigger vote spread. The average of these spreads should again be an indicator of which party has the larger, average, states. This would be across all five elections considered.
+```{r avgsds, echo=FALSE}
+results$dmeans <- (results$dem00+results$dem04+results$dem08+results$dem12+results$dem16)/5
+results$dsd <- apply(results[,c(4,6,8,10,12)],1,sd)
+results$rmeans <- (results$rep00+results$rep04+results$rep08+results$rep12+results$rep16)/5
+results$rsd <- apply(results[,c(5,7,9,11,13)],1,sd)
+print(paste0("Average dem spread ",round(mean(results$dsd)),0))
+print(paste0("Average rep spread ",round(mean(results$rsd)),0))
+```
+Hopefully, by now you are convinced that the Democrats tend to win fewer but larger states by larger margins while the Replubicans win more but smaller states with lower margins. 
+
+The fact that the Democrats win states with larger populations should be reflected in the Electoral College votes that they have. If the vote margins for these states are proportionally higher or lower than reflected by the population then the Electoral College votes may not reflect that. To try and get a better idea of how this interplay might work out I will attempt to run some simulations.
+
+It seems like saying that the Democrats vote margins outperform their Electoral College population allotment is the same as saying that they have better voter turnout. I did some searching but didn't find any good source for data on voter turnout by party for the presidential elections. Maybe in a future revision of this, if I have one, I will include that. 
+
+##Simulations 
+
+What happens if we extend these results to consider the question of whether the electoral college or popular vote should be used? 
+
+First, the caveats. We are talking about events that occur only once every four years. I am basing what I am doing on only the last five of those. This is the classic computer cliche of 'insufficient data'. A handful of atypical events to try to determine something typical about. These elections could be argued to be more atypical than most. You had Gore-Bush with hanging chads, Florida and Nader, and finally the Supreme Court. The Obama elections were frequently described as historic. The last one had Russian hackers, the Comey letter, and again a win with less popular vote. 
+
+The approach I am taking is to assume a normal - bell shaped curve - distribution of votes. To the best of my admittedly limited knowledge this is a valid enough approach for this sort of thing. However, again to my understanding, this is probably not based on enough data to draw confident conclusions from. Based on these distributions I use a Monte Carlo type approach (sort of controlled randomize the parameters and do a lot of trials) and simply hold 10,000 elections. But to repeat one more time, all 10,000 of these are all still based on only five real elections. 
+
+Spoiler alert, keep in mind that the Democrats actually won four out of five of these elections on popular vote.
+```{r simulation, echo=FALSE}
+winsdBoth <- 0
+winsrBoth <- 0
+nonWins <- 0
+winsdPop <- 0
+winsrPop <- 0
+winsdEC <- 0
+winsrEC <- 0
+for (i in 1:NUM_ITERS) {
+  if (i %% 1000 == 0) {
+    cat("Iteration",i,"\n")
+  }
+  # Electoral college tallies
+  dec <- 0
+  rec <- 0
+  # Popular vote tallies
+  dpop <- 0
+  rpop <- 0
+  for (j in 1:nrow(results)) {
+    row <- results[j,]
+    dvotes <- rnorm(1,mean=row$dmeans,row$dsd)
+    dpop <- dpop + dvotes
+    rvotes <- rnorm(1,mean=row$rmeans,row$rsd)
+    rpop <- rpop + rvotes
+    if (dvotes > rvotes) {
+      dec <- dec + row$EV
+    }
+    else {
+      rec <- rec + row$EV
+    }
+  }
+  if (dec < 270 && rec < 270) {
+    nonWins <- nonWins + 1
+  }
+  if (dpop > rpop && dec > rec) {
+    winsdBoth <- winsdBoth + 1
+  }
+  else if (rpop > dpop && rec > dec)  {
+    winsrBoth <- winsrBoth + 1
+  }
+  else {
+    if (dpop > rpop)  {
+      winsdPop <- winsdPop + 1
+    }
+    else {
+      winsrPop <- winsrPop + 1
+    }
+    if (dec >= 270) {
+      winsdEC <- winsdEC + 1
+    }
+    else if (rec >= 270) {
+      winsrEC <- winsrEC + 1
+    }
+    else {
+#      print(paste0("no ec dec ",dec," rec ",rec))
+    }
+  }
+  if (dec + rec < 538) {
+    stop(paste0("Invalid electoral vote tally ",dec+rec," on iteration ",i))
+  }
+}
+print(paste0("Elections without an electoral college winner ",nonWins))
+# dem wins both
+print(paste0("Dem: wins both ",winsdBoth))
+# rep wins both
+print(paste0("Rep: wins both ",winsrBoth))
+print("")
+print("If split decision decided by Electoral College")
+print(paste0("Dem: wins EC ",winsdEC))
+print(paste0("Rep: wins EC ",winsrEC))
+print("")
+print("If split decision decided by popular vote")
+print(paste0("Dem: wins pop ",winsdPop))
+print(paste0("Rep: wins pop ",winsrPop))
+```
+
+As a quick aside. During every election coverage they mention the possibility that there might not be a decisive result in the Electoral College. The election could end up in an Electoral vote tie. This has never happened but simulations seem to show that the odds against it aren't astronomical. In my testing the "Elections without an electoral college winner" value is usually around 100 or about 1% of the time.
+
+For comparison of election systems we can ignore elections where there is both an Electoral College and popular vote winner. The system selected doesn't matter. But, in this case I think how many of these elections are won by Democrats rather than Republicans needs to be mentioned. Based on the last five elections it is very difficult for a Republican candidate to get any kind of popular vote win. The results show that they win both categories much less often. 
+
+Relative to the others maybe Obama's victories were resounding enough to severely skew these results. That can be checked...
+```{r obama, echo=FALSE} 
+obama <- sum(results$dem08+results$dem12)-sum(results$rep08+results$rep12)
+print(paste0("sum of Obama's margins of victory (popular) ",obama))
+rest <- sum(results$rep00+results$rep04+results$rep16)-sum(results$dem00+results$dem04+results$dem16)
+print(paste0("sum of Republican margins of victory (popular) in the rest ",rest))
+print(paste0("Obama's national victory margins are ",round(obama/abs(rest),0)," times the Republican"))
+```
+Remember also, that the Democrat's won on popular vote in two out of three of the other elections besides Obama's. The one Republican popular vote win was the incumbent Bush's victory following 9-11. So, based on data generated from these results, my simulations are bound to considerably favor the Democrats in popular vote. However, I think that the results showing that the Democrats also win so many of these simulated elections in the Electoral College is an indicator that there is no significant Electoral College bias against them. 
+
+My simulations have shown about a 20% chance that there won't be a clear winner in both categories. Historically, this is rather high. Given 2 out of 5, 40%, of the last actual elections ended this way, it is rather lower. This may reflect a parity in the current electorate making closer elections more likely? 
+
+The system selected does matter in the "split decision" elections. The results always indicate that if they are decided on popular vote the Democrats win a big majority. If they are decided by Electoral Vote then the Republicans win a large majority of the elections. A possible indicator that currently with the Electoral College Republicans might tend to win close elections. When they already seem to have an advantage in the majority of elections that aren't so close, would it be better to switch to popular vote giving Democrats an advantage here? 
+
+## Conclusions 
+
+This is not a "scientific" experiment. It doesn't prove anything. I think it may suggest something though. This is that the Democrats have recently had a popular vote advantage. There is no reason to believe this won't continue. Possiblly, the Electoral College gives the Republicans a slight advantage in close elections. Maybe, even to the extent of being unfair to Democrat candidates in some of these. But, from what I've seen it seems that the Democrats have a considerable advantage based on popular vote in most of the elections to offset this.  
+
+## Opinion
+
+Changing the process could have unwanted consequences. It could make a tipping point where the Democrats win almost all presidential elections. Establishing a Democrat dynasty. This is contrary to the point of a two party system. Even if that did not happen it would certainly diminish the importance of smaller states. Presidential election campaigns could come down to candidates going from one major city to another. Issues and concerns of voters in the smaller states would become more unheard. 
+
+I'm not sure this is something you want to trifle with lightly. As Churchill said, 
+
+> <chunk style="font-size:15px">Many forms of Government have been tried, and will be tried in this world of sin and woe. No one pretends that democracy is perfect or all-wise. Indeed it has been said that democracy is the worst form of Government except for all those other forms that have been tried from time to time.…</chunk>
+
+You don't want to inadvertently turn our system into one of the other forms. It seems like the idea of switching to popular vote is gaining some traction but from the link above, [Why the Electoral college](https://www.historycentral.com/elections/Electoralcollgewhy.html),
+
+> <chunk style="font-size:15px">changing it is very unlikely. It would take a constituitional amendment ratified by 3/4 of states to change the system. It is hard to imagine the smaller states agreeing. One way of modifying the system is to eliminate the winner take all part of it. The method that the states vote for the electoral college is not mandated by the consitution but is decided by the states. Two states do not use the winner take all system, Maine and Nebraska.</chunk>
+
+I might add that I am against split electoral votes as well. It seems an unnecessary and annoying complication when doing something like this or other presidential election related computer programming. For this I made everyone winner take all. So there Maine and Nebraska.
+
+"One person, one vote" is an important democratic principle. But in a representative democracy so is "equal representation". The Electoral College I think may to some extent provide this for smaller states. Which means as the demographics have shaken out, to generally be the Republicans. 
+
+____________
+
+So again, I think the Hardball guest is still currently correct beyond the founding fathers. The Electoral College does somewhat protect the votes of smaller states, but in a broader sense than just the extra 2 non-population based seats it gets votes for. Their electoral vote is guaranteed and not wiped out by having a small margin of victory compared to larger states with much larger margins of victory.  
+
+For the record I tracked down the Hardball segment.  
+[Majority of Americans support getting rid of the Electoral College](https://www.msnbc.com/hardball/watch/majority-of-americans-support-getting-rid-of-the-electoral-college-1461998659718)  
+The guest was [Michael Steel](http://politics.georgetown.edu/michael-steel/)  
+
+
+
