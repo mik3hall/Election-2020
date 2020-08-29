@@ -1,0 +1,109 @@
+---
+title: "Electoral College Upset Elections"
+author: "Mike Hall"
+date: "8/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+```{r constants, echo=FALSE} 
+NUM_ITERS <- 10000
+SD_PAD <- 0
+```
+
+```{r init, echo=FALSE}
+d00 <- read.csv("election00.csv")
+d <- read.csv("electoral.csv")
+dout <- merge(d,d00)
+results <- dout[,c(1:3,13,12,4:11)]
+```
+
+```{r avgsds, echo=FALSE}
+results$dmeans <- (results$dem00+results$dem04+results$dem08+results$dem12+results$dem16)/5
+results$dsd <- apply(results[,c(4,6,8,10,12)],1,sd)
+results$rmeans <- (results$rep00+results$rep04+results$rep08+results$rep12+results$rep16)/5
+results$rsd <- apply(results[,c(5,7,9,11,13)],1,sd)
+```
+
+```{r simulation, echo=FALSE}
+sim <- function(results) {
+  # Electoral college tallies
+  dec <- 0
+  rec <- 0
+  # Popular vote tallies
+  dpop <- 0
+  rpop <- 0
+  for (j in 1:nrow(results)) {
+    row <- results[j, ]
+    dvotes <- rnorm(1, mean = row$dmeans, row$dsd)
+    dpop <- dpop + dvotes
+    rvotes <- rnorm(1, mean = row$rmeans, row$rsd)
+    rpop <- rpop + rvotes
+    if (dvotes > rvotes) {
+      dec <- dec + row$EV
+    }
+    else {
+      rec <- rec + row$EV
+    }
+  }
+  return(c(dpop, rpop, dec, rec))
+}
+```
+
+```{r upsets, echo=FALSE}
+upsets <- function(rounds,results) {
+  dupsets <- c()
+  rupsets <- c()
+  cmargin <- c()
+  clinton <- 2868686
+  for (i in 1:rounds) {
+    if (i %% 1000 == 0) {
+      cat("Iteration",i,"\n")
+    }
+    simrun <- sim(results)
+    dpop <- simrun[1]
+    rpop <- simrun[2]
+    dec <- simrun[3]
+    rec <- simrun[4]
+    if (dpop > rpop && rec >= 270) {
+      rupsets <- c(rupsets,dpop-rpop)
+    }
+    else if (rpop > dpop && dec >= 270) {
+      dupsets <- c(dupsets,rpop-dpop)
+    }
+    if (dpop > rpop && rec >= 270 && dpop - rpop >= clinton) {
+      cmargin <- c(cmargin,rpop-dpop)
+    }
+  }
+  print(paste("Avg population difference",round(mean(c(dupsets,rupsets)),0)))
+  print(paste("Max Democrat upset difference",round(max(dupsets),0)))
+  print(paste("Max Republication upset difference",round(max(rupsets),0)))
+  print(paste("democrat upsets",length(dupsets)))
+  print(paste("republican upsets",length(rupsets)))
+  print(paste("Upset probability",(length(dupsets)+length(rupsets))/rounds,"(D)",length(dupsets)/rounds,"(R)",length(rupsets)/rounds
+               ))
+  print(paste("Probability of loss with Clinton popular margin",(length(cmargin)/rounds)))
+  dupsets <- round(dupsets/1000000,0)
+  rupsets <- round(rupsets/1000000,0)
+  n <- max(length(dupsets),length(rupsets))
+  length(dupsets) <- n
+  length(rupsets) <- n
+  dfd <- data.frame(Votes = dupsets)
+  dfd$Party <- "Democrat"
+  dfr <- data.frame(Votes = rupsets)
+  dfr$Party <- "Republican"
+  upsets <- rbind(dfd,dfr)
+  p <- ggplot(upsets, aes(x = Votes, fill = Party)) + geom_histogram(binwidth=.5) + 
+    scale_fill_manual(values=c("blue","red")) +
+    labs(title="EC upsets as vote margin increases",x="Vote margin (millions)", y="EC upsets")
+  p
+}
+```
+
+```{r invocation, echo=FALSE}
+upsets(10000,results)
+```
